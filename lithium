@@ -1,0 +1,149 @@
+#导入各种库
+import requests
+import urllib
+import json,time
+from bs4 import BeautifulSoup
+from PIL import Image
+import PyPDF2
+import pdfkit
+import ssl
+import os
+ssl._create_default_https_context = ssl._create_unverified_context
+
+#爬取网页内容，然后进行保存
+
+def neirong(urls):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+    }
+    html = requests.get(urls, headers=headers)
+    if html.status_code != 200:
+        return urls
+    cont = BeautifulSoup(html.text, 'lxml')
+    pic = cont.select('p > img')
+    title = cont.select('.rich_media_title')
+    # print(title)
+    for ti in title:
+        name111 = ti.get_text().strip()
+        if len(name111)!=0:
+            print(name111)
+        else:
+            return urls
+    # 找到图片并生成PDF
+    im_list = []
+    nu = 1
+    try:
+        for k in pic:
+            print(k.get('data-src'))
+            if 'fmt=gif' not in k.get('data-src'):
+                urllib.request.urlretrieve(k.get('data-src'),'%s.png' % nu)
+                imge = Image.open('{}.png'.format(nu))
+                # im_list.append(img)
+                if imge.mode == "RGBA":
+                    imge = imge.convert('RGB')
+                    im_list.append(imge)
+                else:
+                    im_list.append(imge)
+                nu = nu + 1
+        imge.save('./pdf/2.pdf', "PDF", resolution=100.0, save_all=True, append_images=im_list[:-1])
+
+    except Exception as e:
+        #print(urls)
+        print('{}没有下载成功'.format(name111))
+        for ppp in os.listdir('.'):
+            if ppp.endswith('.png'):
+                os.remove('./' + ppp)
+        for pppp in os.listdir('./pdf/'):
+            if pppp.endswith('.pdf'):
+                os.remove('./pdf/' + pppp)
+        return(urls)
+    try:
+   # 先把文字爬取下来
+        confg = pdfkit.configuration(wkhtmltopdf='/usr/local/bin/wkhtmltopdf')
+        # 这里指定一下wkhtmltopdf的路径，这就是我为啥在前面让记住这个路径
+        pdfkit.from_url(urls, './pdf/1.pdf', configuration=confg)
+    except Exception as e:
+        return urls
+    # 删除图片并合并Pdf
+    pdfFiles = []
+    for filename in os.listdir('.'):
+        if filename.endswith('.png'):
+            os.remove('./' + filename)
+    for filename in os.listdir('./pdf/'):
+        if filename.endswith('.pdf'):
+            pdfFiles.append(filename)
+    pdfFiles.sort(key=str.lower)
+    pdfWriter = PyPDF2.PdfFileWriter()
+    for filename in pdfFiles:
+        pdfFileObj = open('./pdf/'+filename, 'rb')
+        pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
+        for pagenum in range(0, pdfReader.numPages):
+            pageObj = pdfReader.getPage(pagenum)
+            pdfWriter.addPage(pageObj)
+    pdfoutput = open('{}.pdf'.format(name111), 'wb')
+    pdfWriter.write(pdfoutput)
+    pdfoutput.close()
+    os.remove('./pdf/1.pdf')
+    os.remove('./pdf/2.pdf')
+    time.sleep(5)
+    print('{}finished'.format(name111))
+
+def url_part(ssss):
+    alldata1=[ ]
+    for kk in range(0,int(len(ssss))):
+        '''data1={'titles'+str(kk):ssss[kk]['title'],
+                'urls{}'.format(str(kk)):ssss[kk]['content_url']
+        }'''
+        #data1=ssss[kk]['title']
+        data2=ssss[kk]['content_url']
+        alldata1.append(data2)
+    print(alldata1)
+    return(alldata1)
+
+def url_main(url):
+    headers={
+        'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
+        ,'Cookie':'pgv_pvid=3046599012; tvfe_boss_uuid=f564a4266ab5fdcb; pgv_pvi=4269756416; RK=GfikwgDEcK; ptcz=3726d3abae57e4f99c9c08106be0b85f1e8010b8c750c899e58ed2a9850cc476; o_cookie=330648374; pac_uid=1_330648374; ptui_loginuin=330648374; mobileUV=1_166fe0907cc_df866; ua_id=MXnoVXTIOAbFNDPLAAAAAIe7-hUwBsGeu4fgHHauNn8=; mm_lang=zh_CN; ts_uid=6194688600; luin=o0330648374; lskey=00010000014b44d437d87c3488209aa30d5f19c233f08030359856d80d916e80b6c2a52cfbd3f9aab12e3e93; openid2ticket_ojGo91HHJiFOE8W5P1K1huVqzdDk=ksQ7aoUdut/aYnG+jlxGsapNojbzV9ZE0aggt31GEZA=; xid=9d39ad09f3891051dd2377d583d80618; wxuin=2740765341; devicetype=iMacMacBookAir61OSXOSX10.13.3build(17D47); version=12030a10; lang=zh_CN; pass_ticket=4d4LuQcl65+17PcTOs2ppth4Gn1as3Vcyq3g7pY3CIdbLl7bbrl6eYiowVa66/Nd; wap_sid2=CJ2F85oKElx6LVp6WWIzMnR1Z090UDBzaHBXdDF2ckFHZ2czajJta3BMNXNBZkFhRFlLZHRSV0ZaYUNuaWpMZ0JhWWpsZnB3N1p3NjNpbWVLLUJWRHh3YmhGNnZoZUFEQUFBfjDA1I7iBTgNQJVO'
+        ,'Host':'mp.weixin.qq.com',
+        'Referer': 'https://mp.weixin.qq.com/mp/profile_ext?action=home&__biz=MzA3NzgxNTkyMw==&scene=124&',
+        'Content-Type':'application/json; charset=UTF-8',
+        'Connection': 'Keep-Alive',
+        'Referrer Policy': 'no-referrer-when-downgrade'
+    }#用request方法获取网址及网页源码。
+
+    html=requests.get(url,headers=headers)
+    #print(html.text)
+    #Json数据解析
+    jdata=json.loads(html.text)
+    #print(jdata)
+    j1=json.loads(jdata['general_msg_list'])
+    alldata=[  ]
+    for i in j1['list']:
+        #j22=i['app_msg_ext_info']['multi_app_msg_item_list']['title']
+        #j22 = i['app_msg_ext_info']['multi_app_msg_item_list']
+        #print(i['app_msg_ext_info']['content_url'])
+        if i['app_msg_ext_info']['content_url']!=[]:
+            #print(i['app_msg_ext_info']['content_url'])
+            neirong(i['app_msg_ext_info']['content_url'])
+        else:
+            continue
+
+        otherurls=url_part(i['app_msg_ext_info']['multi_app_msg_item_list'])
+        #print(otherurls)
+        if otherurls!=[]:
+            for k in otherurls:
+                neirong(k)
+        else:
+            continue
+
+if __name__ == '__main__':
+    for i in range(6,7):
+        url1='https://mp.weixin.qq.com/mp/profile_ext?action=getmsg&__biz=MzA3NzgxNTkyMw==&f=json&offset='
+        url2='&count=10&is_ok=1&scene=124&uin=777&key=777&pass_ticket=&wxtoken=&appmsg_token=992_xZJy6GIjBPK7YvhYsi7ZLyJ2QDXly3j4Qcu7PA~~&x5=0&f=json'
+        #拼接网页
+        url=url1+'%s'%(i*10)+url2
+        #url='https://mp.weixin.qq.com/mp/profile_ext?action=getmsg&__biz=MzA3NzgxNTkyMw==&f=json&offset=10&count=10&is_ok=1&scene=124&uin=777&key=777&pass_ticket=&wxtoken=&appmsg_token=991_ILvhWtVpEj9iMB%252FWCPJRoXXDdrmQrmiLE_aU3A~~&x5=0&f=json'
+        #print(requests.get(url))
+        #主程序
+        #print(url)
+        url_main(url)
